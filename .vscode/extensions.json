@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "Gruntfuggly.todo-tree",
+        "tamasfe.even-better-toml",
+        "rust-lang.rust-analyzer",
+        "Swellaby.vscode-rust-test-adapter"
+    ]
+}
