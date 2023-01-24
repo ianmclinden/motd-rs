@@ -1,0 +1,18 @@
+#!/bin/bash
+
+if entry=$(last -2 "$(whoami)"| tail -1 | sed "s/[ ]\{2,\}/\n/g"); then
+
+    lines=$(wc -l <<< "$entry" | tr -d ' ')
+    if [ "$lines" -eq "5" ]; then
+        # Remote access
+        DATE=$(echo "$entry" | sed '4q;d')
+        SRC=$(echo "$entry" | sed '3q;d')
+    elif [ "$lines" -eq "4" ]; then
+        # Local access
+        DATE=$(echo "$entry" | sed '3q;d')
+        SRC=$(echo "$entry" | sed '2q;d')
+    fi
+
+    echo
+    echo "Last login: ${DATE} from ${SRC}"
+fi

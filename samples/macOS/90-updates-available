@@ -1,0 +1,15 @@
+#!/bin/sh
+
+HOMEBREW_PREFIX=$(brew --prefix 2>/dev/null)
+stamp="${HOMEBREW_PREFIX}/var/lib/update-notifier/updates-available"
+
+if [ -r "$stamp" ]; then
+    echo
+    cat "$stamp"
+
+    if ! find "$stamp" -newermt 'now-7 days' 2> /dev/null | grep -q -m 1 '.'; then
+        echo ""
+        echo "The list of available updates is more than a week old."
+        echo "To check for new updates run: brew update"
+    fi
+fi
