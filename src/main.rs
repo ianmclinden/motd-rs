@@ -5,10 +5,11 @@ use std::{
 };
 use walkdir::WalkDir;
 
-const PREFIX: &str = env!("PREFIX", "No PREFIX specified");
+const PREFIX: &str = env!("PREFIX");
 
 fn main() {
-    let motd_dir = Path::new(PREFIX).join("etc").join("update-motd.d");
+    let prefix = if PREFIX.is_empty() { "/" } else { PREFIX };
+    let motd_dir = Path::new(prefix).join("etc").join("update-motd.d");
 
     let matches = clap::Command::new("motd")
         .about("dynamic MOTD generation")

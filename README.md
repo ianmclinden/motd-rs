@@ -54,6 +54,11 @@ To customize this, for example to use the macOS (with intel) standard prefix `/u
 PREFIX="/usr/local" cargo build
 ```
 
+Or more genenrally, to use the homebrew prefix for a platfor, compile with:
+```sh
+PREFIX="$(brew --prefix)" cargo build
+```
+
 ## Installation / Usage
 
 Build and install `motd` with cargo, and create the MOTD directory
