@@ -1,9 +1,8 @@
 #!/bin/sh
 
-HOMEBREW_PREFIX=$(brew --prefix 2>/dev/null)
-stamp="${HOMEBREW_PREFIX}/var/lib/update-notifier/updates-available"
+stamp=$(update-notifier --stamp)
 
-if [ -r "$stamp" ]; then
+if [ -r "$stamp" ] && [ -s "$stamp" ]; then
     echo
     cat "$stamp"
 

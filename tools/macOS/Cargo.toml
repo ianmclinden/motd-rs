@@ -1,6 +1,6 @@
 [package]
-name = "motd"
-description = "Message of the Day utility"
+name = "tools-macos"
+description = "macOS-specific motd tools"
 authors = ["Ian McLinden <mclinden.ian@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
@@ -10,7 +10,4 @@ license = "GPL-3.0-or-later"
 
 [dependencies]
 clap = { version = "^4.1", features = ["env", "cargo"] }
-walkdir = "^2.3"
-
-[workspace]
-members = ["tools/macOS"]
+colored = { version = "^2" }

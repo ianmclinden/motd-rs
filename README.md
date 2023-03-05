@@ -64,8 +64,8 @@ PREFIX="$(brew --prefix)" cargo build
 Build and install `motd` with cargo, and create the MOTD directory
 ```sh
 cargo install --path .
-# Or, with a custom PREFIX, e.g. for macOS (with apple silicon)
-# PREFIX="/opt/homebrew" cargo install --path .
+# Or, with a custom PREFIX, e.g. for macOS (with homebrew)
+# PREFIX="$(brew --prefix)" cargo install --path .
 mkdir -p $(motd --path)
 ```
 
@@ -73,6 +73,18 @@ Then, add `motd` to your profile (for interactive login shells).
 ```sh
 # E.g. for bash
 echo -e "# Dynamic MOTD\n[[ -e \"$(which motd)\" ]] && $(which motd)" >>  ~/.bash_profile
+```
+
+### Tools
+
+Additional tools are included that provide platform-specific capabilities. Currently only [macOS](tools/macOS/) tools are available.
+
+Build and install these tools with cargo:
+```sh
+# on macOS
+cargo install --path tools/macOS
+# Or, with a custom PREFIX, e.g. for macOS (with homebrew)
+# PREFIX="$(brew --prefix)" cargo install --path tools/macOS
 ```
 
 ### Sample MOTD Fragments
