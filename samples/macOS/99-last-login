@@ -1,17 +1,10 @@
 #!/bin/bash
 
-if entry=$(last -2 "$(whoami)"| tail -1 | sed "s/[ ]\{2,\}/\n/g"); then
+PATTERN='^([^ ]+)[ ]{2,}([^ ]+)[ ]{2,}([^ ]+)?[ ]{2,}(.*)[ ]{2,}(.*)$'
+if [[ "$(last -2 "$(whoami)"| tail -1)" =~ $PATTERN ]]; then
 
-    lines=$(wc -l <<< "$entry" | tr -d ' ')
-    if [ "$lines" -eq "5" ]; then
-        # Remote access
-        DATE=$(echo "$entry" | sed '4q;d')
-        SRC=$(echo "$entry" | sed '3q;d')
-    elif [ "$lines" -eq "4" ]; then
-        # Local access
-        DATE=$(echo "$entry" | sed '3q;d')
-        SRC=$(echo "$entry" | sed '2q;d')
-    fi
+    DATE="${BASH_REMATCH[4]}"
+    SRC="${BASH_REMATCH[3]:-${BASH_REMATCH[2]}}"
 
     echo
     echo "Last login: ${DATE} from ${SRC}"
