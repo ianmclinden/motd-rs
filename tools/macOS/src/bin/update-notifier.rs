@@ -1,5 +1,4 @@
 use clap::{crate_version, Arg, ArgAction};
-use colored::Colorize;
 use std::{
     fs,
     io::Write,
@@ -18,7 +17,7 @@ fn main() {
     let stamp_file = stamp_dir.join("updates-available");
 
     let matches = clap::Command::new("update-notifier")
-        .about("track available brew updates for MOTD")
+        .about("Track available brew updates for MOTD")
         .long_about(format!(
             "
 Track available brew updates for message of the day.
@@ -52,20 +51,16 @@ of packages. This stampfile can then be read by an MOTD fragment.",
 
             let outdated = String::from_utf8_lossy(&output.stdout).lines().count();
             if outdated > 0 {
+                let formulas = if outdated > 1 { "formulas" } else { "formula" };
+                let them = if outdated > 1 { "them" } else { "it" };
                 writeln!(
                     &mut stamp,
-                    "You have {} outdated formula{} installed.",
-                    outdated.to_string().bold(),
-                    if outdated > 1 { "s" } else { "" }
+                    "You have {outdated} outdated {formulas} installed."
                 )
                 .unwrap();
                 writeln!(
                     &mut stamp,
-                    "You can upgrade {} with {}\nor list {} with {}",
-                    if outdated > 1 { "them" } else { "it" },
-                    "brew upgrade".bold(),
-                    if outdated > 1 { "them" } else { "it" },
-                    "brew outdated".bold()
+                    "You can upgrade {them} with `brew upgrade`\nor list {them} with `brew outdated`",
                 )
                 .unwrap();
             }
