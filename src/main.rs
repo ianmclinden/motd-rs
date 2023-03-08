@@ -12,7 +12,7 @@ fn main() {
     let motd_dir = Path::new(prefix).join("etc").join("update-motd.d");
 
     let matches = clap::Command::new("motd")
-        .about("dynamic MOTD generation")
+        .about("Dynamic MOTD generation")
         .long_about(format!(
             "
 Dynamic message of the day generation.
