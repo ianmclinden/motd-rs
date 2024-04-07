@@ -2,7 +2,7 @@
 name = "tools-macos"
 description = "macOS-specific motd tools"
 authors = ["Ian McLinden <mclinden.ian@gmail.com>"]
-version = "0.2.0"
+version = "0.2.3"
 edition = "2021"
 license = "GPL-3.0-or-later"
 
