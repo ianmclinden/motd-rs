@@ -1,51 +1,62 @@
-use clap::{crate_version, Arg, ArgAction};
+use clap::Parser;
 use std::{
-    path::Path,
+    path::{Path, PathBuf},
     process::{exit, Command},
+    sync::OnceLock,
 };
 use walkdir::WalkDir;
 
-const PREFIX: &str = env!("PREFIX");
+fn motd_dir() -> &'static PathBuf {
+    static MOTD_DIR: OnceLock<PathBuf> = OnceLock::new();
+    MOTD_DIR.get_or_init(|| {
+        let prefix = match option_env!("PREFIX") {
+            Some(v) if !v.is_empty() => v,
+            _ => "/",
+        };
+        Path::new(prefix).join("etc").join("update-motd.d")
+    })
+}
 
-fn main() {
-    let prefix = if PREFIX.is_empty() { "/" } else { PREFIX };
-    let motd_dir = Path::new(prefix).join("etc").join("update-motd.d");
-
-    let matches = clap::Command::new("motd")
-        .about("Dynamic MOTD generation")
-        .long_about(format!(
-            "
-Dynamic message of the day generation.
+fn help_long() -> &'static String {
+    static HELP_LONG: OnceLock<String> = OnceLock::new();
+    HELP_LONG.get_or_init(|| {
+        format!(
+            "Dynamic message of the day generation.
 
 Any executable scripts in '{}/*' are 
 executed as the current user, and concatenated to the MOTD. These scripts must
 be executable, and must emit information on standard out.",
-            motd_dir.to_string_lossy(),
-        ))
-        .arg(
-            Arg::new("path")
-                .long("path")
-                .short('p')
-                .help("Print the MOTD_DIR path and exit")
-                .action(ArgAction::SetTrue),
+            motd_dir().to_string_lossy()
         )
-        .version(crate_version!())
-        .get_matches();
+    })
+}
+
+/// Dynamic MOTD generation
+#[derive(Parser, Debug)]
+#[command(version, about, long_about = help_long())]
+struct Args {
+    /// Print the MOTD_DIR path and exit
+    #[arg(short, long, default_value_t = false)]
+    path: bool,
+}
+
+fn main() {
+    let args = Args::parse();
 
     // Path only
-    if matches.get_flag("path") {
-        println!("{}", motd_dir.to_string_lossy());
+    if args.path {
+        println!("{}", motd_dir().to_string_lossy());
         exit(0);
     }
 
-    let mut motd_buf: String = "".to_string();
+    let mut motd_buf: String = String::new();
 
     // Execute and concat MOTD fragments
-    for fragment in WalkDir::new(motd_dir)
+    for fragment in WalkDir::new(motd_dir())
         .follow_links(true)
         .sort_by_file_name()
         .into_iter()
-        .filter_map(|e| e.ok())
+        .filter_map(Result::ok)
         .filter(|e| {
             e.metadata().is_ok()
                 && e.metadata().unwrap().is_file()
