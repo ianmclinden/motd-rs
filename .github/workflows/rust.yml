@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: ["main"]
+  release:
+    types: [published]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_TOOLCHAIN: stable
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          components: clippy
+      - name: cargo clippy
+        run: cargo clippy --all -- -D warnings -W clippy::pedantic
+      - name: cargo build
+        run: cargo build --verbose --all
+      - name: cargo test
+        run: cargo test --verbose --all --all-features

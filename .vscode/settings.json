@@ -2,4 +2,9 @@
     "editor.formatOnSave": true,
     "editor.formatOnSaveMode": "file",
     "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.extraArgs": [
+        "--all",
+        "--",
+        "-Wclippy::pedantic"
+    ],
 }
