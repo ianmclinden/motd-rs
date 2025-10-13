@@ -10,11 +10,45 @@ use std::{
     sync::LazyLock,
 };
 
+struct OutdatedEntry {
+    name: String,
+    count: usize,
+    check_cmd: String,
+    update_cmd: String,
+}
+
+impl OutdatedEntry {
+    fn new<S: Into<String>>(name: S, count: usize, check_cmd: S, update_cmd: S) -> Self {
+        Self {
+            name: name.into(),
+            count,
+            check_cmd: check_cmd.into(),
+            update_cmd: update_cmd.into(),
+        }
+    }
+}
+
+/// Join a vec into a separated string, interposing a conjuction between the last two elements if necessary
+fn serial_join(mut items: Vec<String>, sep: &str, conjunction: &str) -> String {
+    match items.len() {
+        0 | 1 => items.join(sep),
+        2 => items.join(&format!(" {conjunction} ")),
+        _ => {
+            if let Some(last) = items.last_mut() {
+                *last = format!("{conjunction} {last}");
+            }
+            items.join(sep)
+        }
+    }
+}
+
 #[cfg(feature = "homebrew")]
 mod brew {
     use serde::Deserialize;
     use serde_json::Value;
     use tokio::process::Command;
+
+    use crate::OutdatedEntry;
 
     #[derive(Deserialize)]
     struct OutdatedEntries {
@@ -25,7 +59,7 @@ mod brew {
     }
 
     /// Check for updates from homebrew
-    pub async fn generate_stamp() -> Result<Option<String>, String> {
+    pub async fn generate_stamp() -> Result<Option<OutdatedEntry>, String> {
         log::debug!("Checking for outdated homebrew packages");
 
         log::trace!("Updating homebrew (`brew update-if-needed`)");
@@ -54,11 +88,11 @@ mod brew {
 
         let outdated = outdated_formulae + outdated_casks;
         if outdated > 0 {
-            let formulas = if outdated > 1 { "formulas" } else { "formula" };
-            let them = if outdated > 1 { "them" } else { "it" };
-
-            Ok(Some(format!(
-                "You have {outdated} outdated {formulas} installed.\n\nYou can upgrade {them} with `brew upgrade`\nor list {them} with `brew outdated`\n"
+            Ok(Some(OutdatedEntry::new(
+                "brew",
+                outdated,
+                "`brew outdated`",
+                "`brew upgrade`",
             )))
         } else {
             Ok(None)
@@ -73,10 +107,12 @@ mod cargo {
     use cargo_update::ops as cu;
     use futures::future::join_all;
 
+    use crate::OutdatedEntry;
+
     /// Check for updates from installed cargo packages
     ///
     /// Minimal implementation of <https://github.com/nabijaczleweli/cargo-update/blob/master/src/main.rs>
-    pub async fn generate_stamp() -> Result<Option<String>, String> {
+    pub async fn generate_stamp() -> Result<Option<OutdatedEntry>, String> {
         log::debug!("Checking for outdated cargo packages");
 
         let cargo_dir = env::var("HOME")
@@ -162,11 +198,11 @@ mod cargo {
 
         log::debug!("Found {outdated} outdated cargo packages");
         if outdated > 0 {
-            let packages = if outdated > 1 { "packages" } else { "package" };
-            let them = if outdated > 1 { "them" } else { "it" };
-
-            Ok(Some(format!(
-                "You have {outdated} outdated cargo {packages} installed.\n\nYou can upgrade {them} with `cargo install-update --all`\nor list {them} with `cargo install-update --list`\n"
+            Ok(Some(OutdatedEntry::new(
+                "cargo",
+                outdated,
+                "`cargo install-update --list`",
+                "`cargo install-update --all`",
             )))
         } else {
             Ok(None)
@@ -178,8 +214,10 @@ mod cargo {
 mod rustup {
     use tokio::process::Command;
 
+    use crate::OutdatedEntry;
+
     /// Check for updated toolchains from rustup
-    pub async fn generate_stamp() -> Result<Option<String>, String> {
+    pub async fn generate_stamp() -> Result<Option<OutdatedEntry>, String> {
         log::debug!("Checking for outdated toolchains from rustup");
 
         log::trace!("Checking rustup (`rustup check`)");
@@ -199,15 +237,11 @@ mod rustup {
 
         log::debug!("Found {outdated} outdated rust toolchains");
         if outdated > 0 {
-            let toolchains = if outdated > 1 {
-                "toolchains"
-            } else {
-                "toolchain"
-            };
-            let them = if outdated > 1 { "them" } else { "it" };
-
-            Ok(Some(format!(
-                "You have {outdated} outdated rust {toolchains} installed.\n\nYou can upgrade {them} with `rustup update`\nor list {them} with `rustup check`\n"
+            Ok(Some(OutdatedEntry::new(
+                "rustup",
+                outdated,
+                "`rustup check`",
+                "`rustup update`",
             )))
         } else {
             Ok(None)
@@ -308,7 +342,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     }
 
     log::trace!("Dispatching toolchain-specific updaters");
-    let stamps = join_all(stamps)
+    let outdated = join_all(stamps)
         .await
         .into_iter()
         .map(|handle| handle.expect("failed to join toolchain-specific task"))
@@ -316,34 +350,51 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .flatten()
         .collect::<Vec<_>>();
 
-    if stamps.is_empty() {
+    let mut output: Box<dyn Write> = match args.output.to_lowercase().as_str() {
+        "stdout" => {
+            log::debug!("Writing updates to stdout");
+            Box::new(std::io::stdout())
+        }
+        "stderr" => {
+            log::debug!("Writing updates to stderr");
+            Box::new(std::io::stderr())
+        }
+        path => {
+            let outpath = PathBuf::from(path);
+            if let Some(output_dir) = outpath.parent()
+                && !output_dir.exists()
+            {
+                log::trace!("Creating stamps directory '{}'", output_dir.display());
+                fs::create_dir_all(output_dir).map_err(|_| "Could not create stamp directory.")?;
+            }
+            let stampfile = File::create(&outpath).map_err(|_| "Could not create stampfile")?;
+            log::debug!("Writing updates to stamp file '{}'", outpath.display());
+            Box::new(stampfile)
+        }
+    };
+
+    if outdated.is_empty() {
         log::debug!("No updates found");
     } else {
-        let mut output: Box<dyn Write> = match args.output.to_lowercase().as_str() {
-            "stdout" => {
-                log::debug!("Writing updates to stdout");
-                Box::new(std::io::stdout())
-            }
-            "stderr" => {
-                log::debug!("Writing updates to stderr");
-                Box::new(std::io::stderr())
-            }
-            path => {
-                let outpath = PathBuf::from(path);
-                if let Some(output_dir) = outpath.parent()
-                    && !output_dir.exists()
-                {
-                    log::trace!("Creating stamps directory '{}'", output_dir.display());
-                    fs::create_dir_all(output_dir)
-                        .map_err(|_| "Could not create stamp directory.")?;
-                }
-                let stampfile = File::create(&outpath).map_err(|_| "Could not create stampfile")?;
-                log::debug!("Writing updates to stamp file '{}'", outpath.display());
-                Box::new(stampfile)
-            }
-        };
+        let mut count = 0;
+        log::debug!("{count} updates found");
+        let (toolchains, (check_cmds, update_cmds)) = outdated
+            .into_iter()
+            .map(|entry| {
+                count += entry.count;
+                (entry.name, (entry.check_cmd, entry.update_cmd))
+            })
+            .unzip();
+        let items = if count > 1 { "packages" } else { "package" };
+        let them = if count > 1 { "them" } else { "it" };
 
-        write!(&mut output, "{}", stamps.join("\n")).map_err(|_| "Could not write updates")?;
+        let formatted = format!(
+            "You have {count} outdated {items} installed (from {})\n\nYou can upgrade {them} with {}\nor show {them} with {}",
+            serial_join(toolchains, ", ", "and"),
+            serial_join(update_cmds, ", ", "or"),
+            serial_join(check_cmds, ", ", "or")
+        );
+        write!(&mut output, "{formatted}").map_err(|_| "Could not write update stamp")?;
     }
 
     Ok(())
