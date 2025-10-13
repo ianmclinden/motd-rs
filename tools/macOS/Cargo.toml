@@ -6,5 +6,20 @@ version = "0.2.3"
 edition = "2024"
 license = "GPL-3.0-or-later"
 
+[features]
+default = ["homebrew", "cargo", "rustup"]
+homebrew = ["dep:serde", "dep:serde_json"]
+cargo = ["dep:cargo-update"]
+rustup = []
+
 [dependencies]
-clap = { workspace = true }
+cargo-update = { version = "18.0.0", optional = true }
+clap.workspace = true
+futures.workspace = true
+log = "0.4.28"
+serde = { version = "1.0.228", features = ["derive"], optional = true }
+serde_json = { version = "1.0.145", optional = true }
+simple_logger = { version = "5.0.0", default-features = false, features = [
+    "timestamps",
+] }
+tokio.workspace = true
