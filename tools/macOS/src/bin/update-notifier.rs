@@ -262,9 +262,11 @@ static STAMP_DIR: LazyLock<PathBuf> = LazyLock::new(|| {
 
 static STAMP_FILE: LazyLock<PathBuf> = LazyLock::new(|| STAMP_DIR.join("updates-available"));
 
+static HELP_SHORT: &str = "Track available updates for message of the day";
+
 static HELP_LONG: LazyLock<String> = LazyLock::new(|| {
     format!(
-        "Track available brew updates for message of the day.
+        "${HELP_SHORT}.
 
 When called, stampfile '{}' is updated with the current state
 of packages. This stampfile can then be read by an MOTD fragment.",
@@ -274,7 +276,7 @@ of packages. This stampfile can then be read by an MOTD fragment.",
 
 /// Track available brew updates for MOTD
 #[derive(Parser, Debug)]
-#[command(version, about, long_about = HELP_LONG.as_str())]
+#[command(version, about = HELP_SHORT, long_about = HELP_LONG.as_str())]
 #[allow(clippy::struct_excessive_bools)]
 struct Args {
     /// Print the update stampfile path and exit
@@ -394,7 +396,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             serial_join(update_cmds, ", ", "or"),
             serial_join(check_cmds, ", ", "or")
         );
-        write!(&mut output, "{formatted}").map_err(|_| "Could not write update stamp")?;
+        writeln!(&mut output, "{formatted}").map_err(|_| "Could not write update stamp")?;
     }
 
     Ok(())
